@@ -11,8 +11,6 @@ height, width, channel = img_ori.shape # img_ori의 shape 속성을 사용하여
 plt.figure(figsize=(12, 10)) # 그림을 그리기 위한 새로운 Figure 객체를 생성 / figsize=(12, 10)은 그림의 크기를 가로 12인치, 세로햣 10인치로 설정
 plt.imshow(img_ori, cmap='gray') # imshow() 함수를 사용하여 img_ori를 드로잉 / cmap='gray'는 그려진 이미지를 흑백으로 표시하도록 설정
 
-<matplotlib.image.AxesImage at 0x119242f60> #  matplotlib 라이브러리에서 그려진 이미지를 나타내는 객체, 이미지를 그린 후에 해당 이미지 객체를 출력, 이미 객체의 주소가 포함된 출력
-
 # 이미지를 그레이스케일로 변환하는 코드가 아래에 나열되요!
 
 # hsv = cv2.cvtColor(img_ori, cv2.COLOR_BGR2HSV) # img_ori를 BGR 색상 공간에서 HSV 색상 공간으로 변환하여 hsv 변수에 저장한다. HSV 색상 공간은 색상(Hue), 채도(Saturation), 명도(Value)로 구성되며, 이미지 처리에서 색상 정보를 다루는 데 유용한 코드
@@ -21,7 +19,6 @@ gray = cv2.cvtColor(img_ori, cv2.COLOR_BGR2GRAY)
 
 plt.figure(figsize=(12, 10)) # img_ori를 BGR 색상 공간에서 그레이스케일(흑백)로 변환하여 gray 변수에 저장한다. cv2.COLOR_BGR2GRAY는 BGR 이미지를 그레이스케일 이미지로 변환한다.
 plt.imshow(gray, cmap='gray') # imshow() 함수를 사용하여 gray 이미지를 그려준다. / cmap='gray'는 그려진 이미지를 흑백으로 표시하도록 설정한다.
-<matplotlib.image.AxesImage at 0x102cd2c18> # matplotlib에서 그려진 이미지를 나타내는 객체 / 이 코드는 그레이스케일 이미지를 그린 후에 해당 이미지 객체를 출력한당. 이미지 객체의 주소가 포함된 출력
 
 # 대비 최대화(선택 사항)
 
@@ -59,7 +56,7 @@ _contours, _ = cv2.findContours(
     method=cv2.CHAIN_APPROX_SIMPLE
 ) # img_thresh 이미지에서 윤곽선을 찾아서 contours에 저장한다. mode=cv2.RETR_LIST는 모든 윤곽선을 찾고, method=cv2.CHAIN_APPROX_SIMPLE은 윤곽선을 간단히 표현하는 방식으로 저장한다.
 temp_result = np.zeros((height, width, channel), dtype=np.uint8) # height, width, channel 크기의 영상을 생성한다. 초기 값은 모두 0으로 설정된다.
-cv2.drawContours(temp_result, contours=contours, contourIdx=-1, color=(255, 255, 255)) # temp_result 이미지에 찾은 모든 윤곽선을 흰색으로 그려준다.
+cv2.drawContours(temp_result, contours=_contours, contourIdx=-1, color=(255, 255, 255)) # temp_result 이미지에 찾은 모든 윤곽선을 흰색으로 그려준다.
 
 plt.figure(figsize=(12, 10))
 plt.imshow(temp_result)
@@ -69,7 +66,7 @@ plt.imshow(temp_result)
 
 temp_result = np.zeros((height, width, channel), dtype=np.uint8) # height, width, channel 크기의 영상을 생성하고, 초기 값은 모두 0으로 설정된다.
 contours_dict = [] # 윤곽선 정보를 저장할 빈 리스트인 contours_dict를 생성
-for contour in contours:
+for contour in _contours:
     x, y, w, h = cv2.boundingRect(contour) # 윤곽선을 감싸는 경계 사각형의 위치와 크기를 가져온다.
 
     cv2.rectangle(temp_result, pt1=(x, y), pt2=(x+w, y+h), color=(255, 255, 255), thickness=2) # 경계 사각형을 temp_result 이미지에 그려준다. (255, 255, 255)는 흰색이며 두께는 2로 설정된다.
@@ -156,9 +153,7 @@ def find_chars(contour_list):
             height_diff = abs(d1['h'] - d2['h']) / d1['h'] # 폭 
             # 윤곽선 간의 면적, 폭, 높이 차이를 계산
 
-            if distance < diagonal_length1 * MAX_DIAG_MULTIPLYER \ 
-            and angle_diff < MAX_ANGLE_DIFF and area_diff < MAX_AREA_DIFF \
-            and width_diff < MAX_WIDTH_DIFF and height_diff < MAX_HEIGHT_DIFF:
+            if distance < diagonal_length1 * MAX_DIAG_MULTIPLYER and angle_diff < MAX_ANGLE_DIFF and area_diff < MAX_AREA_DIFF and width_diff < MAX_WIDTH_DIFF and height_diff < MAX_HEIGHT_DIFF:
                 matched_contours_idx.append(d2['idx'])
             # 거리, 각도, 면적, 폭, 높이의 조건을 만족하는 경우에 matched_contours_idx에 윤곽선 인덱스 추가
 
@@ -313,10 +308,10 @@ plt.imshow(temp_result, cmap='gray')
 
     # 문자를 찾기 위한 또 다른 임계값
 
-    longest_idx, longest_text = -1, 0
+longest_idx, longest_text = -1, 0
 plate_chars = []
 # 각 차량 번호판 이미지에 대해 반복
-for i, plate_img in enumerate(plate_imgs): # 번호판 이미지를 크기 조정
+for i, plate_img in enumerate(plate_chars): # 번호판 이미지를 크기 조정
     plate_img = cv2.resize(plate_img, dsize=(0, 0), fx=1.6, fy=1.6) # 번호판 이미지를 이진화
     _, plate_img = cv2.threshold(plate_img, thresh=0.0, maxval=255.0, type=cv2.THRESH_BINARY | cv2.THRESH_OTSU) # 윤곽선을 다시 찾기. (위와 동일한 과정)
     _, contours, _ = cv2.findContours(plate_img, mode=cv2.RETR_LIST, method=cv2.CHAIN_APPROX_SIMPLE)  # 번호판 이미지의 최소 좌표와 최대 좌표를 초기화
@@ -365,10 +360,10 @@ for i, plate_img in enumerate(plate_imgs): # 번호판 이미지를 크기 조�
     plt.imshow(img_result, cmap='gray')
 
 # 가장 긴 문자열을 가진 번호판 정보를 선택
-info = plate_infos[longest_idx]
-chars = plate_chars[longest_idx]
+#info = plate_chars[longest_idx]
+#chars = plate_chars[longest_idx]
 
-print(chars)
+print(plate_chars)
 
 img_out = img_ori.copy()
 

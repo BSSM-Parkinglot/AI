@@ -1,3 +1,0 @@
-cv2.boundingRect() : 윤곽선을 감싸는 사각형을 구한다. 
-area(넓이) = d['w'] * d['h']
-ratio(가로대비 세로비율) = d['w'] / d['h']
