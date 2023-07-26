@@ -1,6 +1,8 @@
 import cv2
 import pytesseract
 from pytesseract import Output
+import re
+import mysql.connector
 
 # 경로 설정
 pytesseract.pytesseract.tesseract_cmd = '/opt/homebrew/bin/tesseract'
@@ -12,6 +14,29 @@ def preprocess_and_detect(img):
     _, thresh = cv2.threshold(blur, 128, 255, cv2.THRESH_BINARY)
 
     return thresh
+
+
+def is_valid_license_plate(license_plate_parts):
+    pattern = r"^\d{2}\w{1}\d{4}$"
+    combined_text = "".join(license_plate_parts)
+    return bool(re.match(pattern, combined_text))
+
+
+def save_to_database(text):
+    # 데이터베이스와 연결 설정
+    cnx = mysql.connector.connect(user='root', password='mysql', host='svc.sel4.cloudtype.app', database='parkinglot', port='32676')
+    cursor = cnx.cursor()
+
+    # 텍스트를 데이터베이스에 저장
+    query = "UPDATE Spot_Info SET Parking = 1, ParkingNum = %s WHERE Spot = %s"
+    cursor.execute(query, (text, 'A1'))
+
+    # 변동 사항 커밋
+    cnx.commit()
+
+    # 연결 해제
+    cursor.close()
+    cnx.close()
 
 
 cap = cv2.VideoCapture(0)
@@ -26,6 +51,8 @@ while cap.isOpened():
     data = pytesseract.image_to_data(preprocessed, lang='kor', output_type=Output.DICT)
 
     recognized_texts = []
+    license_plate_parts = []
+
     for i in range(len(data['level'])):
         x, y, w, h = data['left'][i], data['top'][i], data['width'][i], data['height'][i]
         cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
@@ -36,7 +63,16 @@ while cap.isOpened():
         if len(filtered_text) > 0:
             recognized_texts.append(filtered_text)
 
-    if len(recognized_texts) > 0:
+            if len(recognized_texts) >= 3:
+                license_plate_parts = recognized_texts[-3:]
+                if is_valid_license_plate(license_plate_parts):
+                    break
+
+    if license_plate_parts and is_valid_license_plate(license_plate_parts):
+        combined_text = "".join(license_plate_parts)
+        print(f"---- {combined_text} ----")
+        save_to_database(combined_text)
+    elif len(recognized_texts) > 0:
         print(recognized_texts)
 
     cv2.imshow('Webcam', frame)
