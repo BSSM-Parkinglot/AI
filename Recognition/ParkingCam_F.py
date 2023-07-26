@@ -28,8 +28,8 @@ def save_to_database(text):
     cursor = cnx.cursor()
 
     # 텍스트를 데이터베이스에 저장
-    query = "UPDATE Spot_Info SET Parking = 1, ParkingNum = %s WHERE Spot = %s"
-    cursor.execute(query, (text, 'A1'))
+    query = "INSERT INTO Car_Info(CarNum) VALUES(%s)"
+    cursor.execute(query, (text,))
 
     # 변동 사항 커밋
     cnx.commit()
@@ -113,6 +113,7 @@ while cap.isOpened():
                 print("출입구가 열렸습니다.")
                 open_Breaker_to_database()
                 print('자동차 정보가 저장되었습니다.')
+                save_to_database(combination)
     elif len(recognized_texts) > 0:
         print(recognized_texts)
         close = 0
