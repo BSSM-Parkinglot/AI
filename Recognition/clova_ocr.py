@@ -1,12 +1,17 @@
 import cv2
-import pytesseract
-from pytesseract import Output
+import requests
 import re
-import mysql.connector
+import.connector
 
-# 경로 설정
-pytesseract.pytesseract.tesseract_cmd = '/opt/homebrew/bin/tesseract'
+# 네이버 CLOVA 인증 정보
+client_id = "YOUR_CLIENT_ID"
+client_secret = "YOUR_CLIENT_SECRET"
+naver_ocr_url = "https://jxipvnd5gr.apigw.ntruss.com/custom/v1/23940/23d399aece734a838e4a57babf9b53de95e487b0011119e00a8269b3e7fca1ad/general"
 
+headers = {
+    "X-NCP-APIGW-API-KEY-ID": client_id,
+    "X-NCP-APIGW-API-KEY": client_secret
+}
 
 def preprocess_and_detect(img):
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -15,45 +20,34 @@ def preprocess_and_detect(img):
 
     return thresh
 
-
 def is_valid_license_plate(license_plate_parts):
     pattern = r"^\d{2}\w{1}\d{4}$"
     combined_text = "".join(license_plate_parts)
     return bool(re.match(pattern, combined_text))
 
-
 def save_to_database(text):
-    # 데이터베이스와 연결 설정
     cnx = mysql.connector.connect(user='root', password='mysql', host='svc.sel4.cloudtype.app', database='parkinglot', port='32676')
     cursor = cnx.cursor()
 
-    # 텍스트를 데이터베이스에 저장
     query = "UPDATE Spot_Info SET Parking = 1, ParkingNum = %s WHERE Spot = %s"
     cursor.execute(query, (text, 'A1'))
 
-    # 변동 사항 커밋
     cnx.commit()
 
-    # 연결 해제
     cursor.close()
     cnx.close()
 
 def delete_to_database():
-    # 데이터베이스와 연결 설정
     cnx = mysql.connector.connect(user='root', password='mysql', host='svc.sel4.cloudtype.app', database='parkinglot', port='32676')
     cursor = cnx.cursor()
 
-    # 텍스트를 데이터베이스에 저장
     query = "UPDATE Spot_Info SET Parking = 0, ParkingNum = NULL WHERE Spot = %s"
     cursor.execute(query, ('A1',))
 
-    # 변동 사항 커밋
     cnx.commit()
 
-    # 연결 해제
     cursor.close()
     cnx.close()
-
 
 def find_combinations(recognized_texts):
     combined_text = ' '.join(recognized_texts)
@@ -61,8 +55,23 @@ def find_combinations(recognized_texts):
     matches = re.findall(pattern, combined_text)
     return [match.replace(' ', '') for match in matches]
 
-cnt = 0
+def ocr_naver(image):
+    _, img_encoded = cv2.imencode('.jpg', image)
+    files = {"image": ("frame.jpg", img_encoded, "image/jpg")}
+    response = requests.post(naver_ocr_url, headers=headers, files=files)
+    result = response.json()
 
+    recognized_texts = []
+    if "recognition" in result and "items" in result["recognition"]:
+        for item in result["recognition"]["items"]:
+            text = item["text"].strip()
+            filtered_text = ''.join(c for c in text if c.isalnum() and c not in ('"', "'", "*", "&", "^", "$", "~", "!", "₩", " ", ".", "ㅇ", "ㅠ", "ㆍ", "_", "ㅡ"))
+            if len(filtered_text) > 0:
+                recognized_texts.append(filtered_text)
+
+    return recognized_texts
+
+cnt = 0
 cap = cv2.VideoCapture(0)
 
 while cap.isOpened():
@@ -72,20 +81,7 @@ while cap.isOpened():
         break
 
     preprocessed = preprocess_and_detect(frame)
-    data = pytesseract.image_to_data(preprocessed, lang='kor', output_type=Output.DICT)
-
-    recognized_texts = []
-
-    for i in range(len(data['level'])):
-        x, y, w, h = data['left'][i], data['top'][i], data['width'][i], data['height'][i]
-        cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
-        cv2.putText(frame, data['text'][i], (x, y - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-
-        text = data['text'][i]
-        filtered_text = ''.join(c for c in text if c.isalnum() and c not in ('"', "'", "*", "&", "^", "$", "~", "!", "₩", " ", ".", "ㅇ", "ㅠ", "ㆍ", "_", "ㅡ"))
-        if len(filtered_text) > 0:
-            recognized_texts.append(filtered_text)
-
+    recognized_texts = ocr_naver(preprocessed)
     license_plate_combinations = find_combinations(recognized_texts)
 
     if license_plate_combinations:
