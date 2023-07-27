@@ -28,8 +28,8 @@ def save_to_database(text):
     cursor = cnx.cursor()
 
     # 텍스트를 데이터베이스에 저장
-    query = "INSERT INTO Car_Info(CarNum) VALUES(%s)"
-    cursor.execute(query, (text,))
+    query = "INSERT INTO Car_Info(CarNum, Spot) VALUES(%s, %s)"
+    cursor.execute(query, (text, 'A1',))
 
     # 변동 사항 커밋
     cnx.commit()
