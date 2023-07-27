@@ -40,7 +40,7 @@ def save_to_database(text):
 
 def open_Breaker_to_database():
     # 데이터베이스와 연결 설정
-    cnx = mysql.connector.connect(user='root', password='mysql', host='svc.sel4.cloudtype.app', database='parkinglot', port='32676')
+    cnx = mysql.connector.connect(user='root', password='mysql', host='svc.sel4.cloudtype.app', database='parkinglot', port='32676')''
     cursor = cnx.cursor()
 
     # 텍스트를 데이터베이스에 저장
@@ -120,8 +120,8 @@ while cap.isOpened():
         cnt += 1
     else:
         close += 1
-        if (10 == close):
-            print("---- 12가3456 ----")
+        if (60 == close):
+            print('출입구가 닫혔습니다.')
             close_Breaker_to_database()
             close = 0
 
